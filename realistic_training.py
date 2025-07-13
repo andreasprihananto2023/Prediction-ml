@@ -29,12 +29,12 @@ features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time',
             'Is Peak Hour', 'Is Weekend']
 
 # Changed target to 'Delivery Duration'
-target = 'Delivery Duration (Min)'
+target = 'Delivery Duration (min)'
 
 # Check if target column exists, if not try alternatives
 if target not in data.columns:
     # Try common alternatives
-    possible_targets = ['Delivery Duration (Min)', 'Estimated Duration (min)', 'Duration', 'Delivery Time']
+    possible_targets = ['Delivery Duration (min)', 'Duration', 'Delivery Time']
     target_found = False
     
     for alt_target in possible_targets:

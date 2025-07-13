@@ -67,7 +67,7 @@ features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time',
 # Find target column
 target = 'Delivery Duration (Min)'
 if target not in data.columns:
-    possible_targets = ['Delivery Duration (min)', 'Estimated Duration (min)', 
+    possible_targets = ['Delivery Duration (min)', 
                        'Duration', 'Delivery Time', 'Delivery Duration']
     target_found = False
     
