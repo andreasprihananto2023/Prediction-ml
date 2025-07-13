@@ -3,13 +3,52 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+from datetime import datetime
 
 # Configure page
 st.set_page_config(
-    page_title="Pizza Delivery Time Predictor - Debug Mode",
+    page_title="Pizza Delivery Time Predictor",
     page_icon="🍕",
     layout="wide"
 )
+
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main-header {
+        text-align: center;
+        padding: 2rem 0;
+        background: linear-gradient(90deg, #ff6b6b, #ffa726);
+        color: white;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    .prediction-result {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .feature-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        border-left: 4px solid #ff6b6b;
+    }
+    .info-box {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Load model
 @st.cache_resource
@@ -17,133 +56,167 @@ def load_model():
     """Load the trained model with caching"""
     try:
         if not os.path.exists('realistic_rf_model.pkl'):
-            return None, "Model file 'realistic_rf_model.pkl' not found. Please run the realistic training script first."
+            return None, "Model file not found. Please ensure the model is trained first."
         
         with open('realistic_rf_model.pkl', 'rb') as model_file:
             model_info = pickle.load(model_file)
         
         if isinstance(model_info, dict):
-            model = model_info['model']
-            features = model_info['features']
-            performance = model_info.get('model_performance', {})
-            
             return {
-                'model': model,
-                'features': features,
-                'n_features': len(features),
-                'performance': performance,
-                'full_info': model_info  # Keep full info for debugging
+                'model': model_info['model'],
+                'features': model_info['features'],
+                'performance': model_info.get('model_performance', {})
             }, None
         else:
-            return None, "Invalid model format. Please retrain the model."
+            return None, "Invalid model format."
             
     except Exception as e:
         return None, f"Error loading model: {str(e)}"
 
-# Load diagnostic results for comparison
-@st.cache_resource
-def load_diagnostic_results():
-    """Load diagnostic results if available"""
-    try:
-        if os.path.exists('comprehensive_diagnostic_results.pkl'):
-            with open('comprehensive_diagnostic_results.pkl', 'rb') as f:
-                return pickle.load(f)
-        return None
-    except Exception as e:
-        return None
-
-# Load original training data for comparison
-@st.cache_resource
-def load_training_data():
-    """Load original training data"""
-    try:
-        if os.path.exists('Train Data.xlsx'):
-            data = pd.read_excel('Train Data.xlsx')
-            
-            # Add engineered features (same as diagnostic)
-            data['Is Peak Hour'] = np.where(((data['Order Hour'] >= 11) & (data['Order Hour'] <= 14)) |
-                                           ((data['Order Hour'] >= 17) & (data['Order Hour'] <= 20)), 1, 0)
-            data['Is Weekend'] = np.where(data['Order Month'].isin([6, 7, 8, 9]), 1, 0)
-            
-            return data
-        return None
-    except Exception as e:
-        return None
-
-# Load everything
+# Load model
 model_data, error_message = load_model()
-diagnostic_results = load_diagnostic_results()
-training_data = load_training_data()
+
+def get_time_category(hour):
+    """Get time category for better UX"""
+    if 6 <= hour <= 10:
+        return "🌅 Morning"
+    elif 11 <= hour <= 14:
+        return "🌞 Lunch Time"
+    elif 15 <= hour <= 17:
+        return "☕ Afternoon"
+    elif 18 <= hour <= 22:
+        return "🌆 Dinner Time"
+    else:
+        return "🌙 Late Night"
+
+def get_complexity_description(complexity):
+    """Get pizza complexity description"""
+    descriptions = {
+        1: "🍕 Simple (Margherita, Pepperoni)",
+        2: "🍕 Basic (Hawaiian, Mushroom)",
+        3: "🍕 Standard (Veggie, Meat Lovers)",
+        4: "🍕 Complex (Gourmet, Specialty)",
+        5: "🍕 Premium (Custom, Multiple Toppings)"
+    }
+    return descriptions.get(complexity, "🍕 Pizza")
+
+def get_traffic_description(level):
+    """Get traffic level description"""
+    descriptions = {
+        1: "🟢 Very Light",
+        2: "🟡 Light",
+        3: "🟠 Moderate",
+        4: "🔴 Heavy",
+        5: "🔴 Very Heavy"
+    }
+    return descriptions.get(level, "Traffic")
 
 def main():
-    st.title("🍕 Pizza Delivery Predictor - Debug Mode")
-    st.markdown("---")
+    # Header
+    st.markdown("""
+    <div class="main-header">
+        <h1>🍕 Pizza Delivery Time Predictor</h1>
+        <p>Get accurate delivery time estimates for your pizza orders</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     if error_message:
         st.error(f"❌ {error_message}")
+        st.info("Please ensure the model is properly trained and the file 'realistic_rf_model.pkl' exists.")
         return
     
-    # Debug information
-    st.subheader("🔍 Debug Information")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📊 Model Info")
-        if model_data:
-            st.write(f"**Features**: {model_data['features']}")
-            st.write(f"**Model Type**: {type(model_data['model'])}")
-            st.write(f"**Performance**: {model_data['performance']}")
-    
-    with col2:
-        st.subheader("📋 Diagnostic Info")
-        if diagnostic_results:
-            st.write(f"**Dataset Shape**: {diagnostic_results['dataset_info']['shape']}")
-            st.write(f"**Target**: {diagnostic_results['dataset_info']['target_column']}")
-            st.write(f"**Unique Values**: {diagnostic_results['target_analysis']['unique_values']}")
-            st.write(f"**Mean**: {diagnostic_results['target_analysis']['mean']:.2f}")
-            st.write(f"**Std**: {diagnostic_results['target_analysis']['std']:.2f}")
-    
-    # Sample data comparison
-    if training_data is not None:
-        st.subheader("📋 Sample Training Data")
-        features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
-                   'Distance (km)', 'Topping Density', 'Traffic Level', 
-                   'Is Peak Hour', 'Is Weekend']
+    # Show model performance if available
+    if model_data and model_data['performance']:
+        col1, col2, col3 = st.columns(3)
+        perf = model_data['performance']
         
-        # Find target column
-        target_col = 'Delivery Duration (Min)'
-        if target_col not in training_data.columns:
-            possible_targets = ['Delivery Duration (min)', 'Duration', 'Delivery Time', 'Delivery Duration']
-            for alt_target in possible_targets:
-                if alt_target in training_data.columns:
-                    target_col = alt_target
-                    break
-        
-        sample_data = training_data[features + [target_col]].head(10)
-        st.dataframe(sample_data, use_container_width=True)
+        with col1:
+            st.metric("Model Accuracy", f"{perf.get('r2_score', 0):.2%}")
+        with col2:
+            st.metric("Average Error", f"{perf.get('mae', 0):.1f} min")
+        with col3:
+            st.metric("Model Type", "Random Forest")
     
     st.markdown("---")
     
-    # Prediction form with debugging
+    # Main prediction form
     with st.form("prediction_form"):
-        st.subheader("🔧 Enter Order Details")
+        st.subheader("📋 Order Details")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            pizza_complexity = st.slider("Pizza Complexity", min_value=1, max_value=5, value=3)
-            order_hour = st.slider("Order Hour", min_value=0, max_value=23, value=14)
-            restaurant_avg_time = st.slider("Restaurant Avg Time (minutes)", min_value=10, max_value=60, value=25)
-            distance = st.slider("Distance (km)", min_value=1, max_value=10, value=5)
+            st.markdown("### 🍕 Pizza Information")
+            pizza_complexity = st.select_slider(
+                "Pizza Complexity",
+                options=[1, 2, 3, 4, 5],
+                value=3,
+                format_func=get_complexity_description
+            )
+            
+            topping_density = st.select_slider(
+                "Topping Density",
+                options=[1, 2, 3, 4, 5],
+                value=2,
+                format_func=lambda x: f"Level {x} - {'Light' if x <= 2 else 'Medium' if x <= 3 else 'Heavy'}"
+            )
+            
+            st.markdown("### 🏪 Restaurant Information")
+            restaurant_avg_time = st.slider(
+                "Restaurant Average Preparation Time (minutes)",
+                min_value=10,
+                max_value=60,
+                value=25,
+                step=5,
+                help="Average time this restaurant takes to prepare orders"
+            )
         
         with col2:
-            topping_density = st.slider("Topping Density", min_value=1, max_value=5, value=2)
-            traffic_level = st.slider("Traffic Level", min_value=1, max_value=5, value=3)
-            is_peak_hour = st.selectbox("Peak Hour?", options=[0, 1], index=1, format_func=lambda x: "Yes" if x == 1 else "No")
-            is_weekend = st.selectbox("Weekend?", options=[0, 1], index=0, format_func=lambda x: "Yes" if x == 1 else "No")
+            st.markdown("### 🕐 Time & Location")
+            order_hour = st.select_slider(
+                "Order Hour",
+                options=list(range(24)),
+                value=14,
+                format_func=lambda x: f"{x:02d}:00 - {get_time_category(x)}"
+            )
+            
+            distance = st.slider(
+                "Distance from Restaurant (km)",
+                min_value=1,
+                max_value=10,
+                value=5,
+                help="Distance between restaurant and delivery location"
+            )
+            
+            st.markdown("### 🚗 Traffic & Timing")
+            traffic_level = st.select_slider(
+                "Current Traffic Level",
+                options=[1, 2, 3, 4, 5],
+                value=3,
+                format_func=get_traffic_description
+            )
+            
+            col2_1, col2_2 = st.columns(2)
+            with col2_1:
+                is_peak_hour = st.selectbox(
+                    "Peak Hour?",
+                    options=[0, 1],
+                    index=1,
+                    format_func=lambda x: "Yes (11-14 or 17-20)" if x == 1 else "No"
+                )
+            
+            with col2_2:
+                is_weekend = st.selectbox(
+                    "Weekend?",
+                    options=[0, 1],
+                    index=0,
+                    format_func=lambda x: "Yes (Summer months)" if x == 1 else "No"
+                )
         
-        submitted = st.form_submit_button("🚀 Predict & Debug", type="primary")
+        # Prediction button
+        col_center = st.columns([1, 2, 1])
+        with col_center[1]:
+            submitted = st.form_submit_button("🚀 Predict Delivery Time", type="primary", use_container_width=True)
         
         if submitted:
             try:
@@ -158,130 +231,88 @@ def main():
                 model = model_data['model']
                 predicted_duration = model.predict(input_data)[0]
                 
-                # Debug section
-                st.markdown("---")
-                st.subheader("🔍 Debug Results")
+                # Display result
+                st.markdown(f"""
+                <div class="prediction-result">
+                    <h2>⏱️ Predicted Delivery Time</h2>
+                    <h1 style="font-size: 3rem; margin: 1rem 0;">{predicted_duration:.0f} minutes</h1>
+                    <p style="font-size: 1.2rem;">Estimated delivery at {(datetime.now()).strftime('%H:%M')} + {predicted_duration:.0f} min</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Show order summary
+                st.subheader("📋 Order Summary")
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.subheader("📊 Model Prediction")
-                    st.success(f"**Predicted Duration: {predicted_duration:.1f} minutes**")
-                    
-                    # Show input array
-                    st.subheader("📋 Input Array")
-                    st.write(f"Shape: {input_data.shape}")
-                    st.write(f"Values: {input_values}")
-                    
-                    # Show feature mapping
-                    st.subheader("🔗 Feature Mapping")
-                    feature_df = pd.DataFrame({
-                        'Feature': model_data['features'],
-                        'Value': input_values
-                    })
-                    st.dataframe(feature_df, use_container_width=True)
+                    st.markdown(f"""
+                    <div class="feature-card">
+                        <h4>🍕 Pizza Details</h4>
+                        <p><strong>Complexity:</strong> {get_complexity_description(pizza_complexity)}</p>
+                        <p><strong>Topping Density:</strong> Level {topping_density}</p>
+                        <p><strong>Prep Time:</strong> {restaurant_avg_time} minutes</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 with col2:
-                    st.subheader("🔍 Training Data Matches")
-                    
-                    if training_data is not None:
-                        # Find exact matches in training data
-                        features = model_data['features']
-                        target_col = 'Delivery Duration (Min)'
-                        if target_col not in training_data.columns:
-                            possible_targets = ['Delivery Duration (min)', 'Duration', 'Delivery Time', 'Delivery Duration']
-                            for alt_target in possible_targets:
-                                if alt_target in training_data.columns:
-                                    target_col = alt_target
-                                    break
-                        
-                        # Create filter condition
-                        condition = (
-                            (training_data['Pizza Complexity'] == pizza_complexity) &
-                            (training_data['Order Hour'] == order_hour) &
-                            (training_data['Restaurant Avg Time'] == restaurant_avg_time) &
-                            (training_data['Distance (km)'] == distance) &
-                            (training_data['Topping Density'] == topping_density) &
-                            (training_data['Traffic Level'] == traffic_level) &
-                            (training_data['Is Peak Hour'] == is_peak_hour) &
-                            (training_data['Is Weekend'] == is_weekend)
-                        )
-                        
-                        matches = training_data[condition]
-                        
-                        if len(matches) > 0:
-                            st.success(f"**Found {len(matches)} exact matches in training data:**")
-                            actual_values = matches[target_col].values
-                            st.write(f"Actual values: {actual_values}")
-                            st.write(f"Predicted: {predicted_duration:.1f}")
-                            
-                            if len(set(actual_values)) == 1:
-                                actual_val = actual_values[0]
-                                diff = abs(predicted_duration - actual_val)
-                                st.write(f"**Difference**: {diff:.6f}")
-                                
-                                if diff < 0.001:
-                                    st.success("✅ Perfect match!")
-                                elif diff < 0.1:
-                                    st.warning("⚠️ Very close match")
-                                else:
-                                    st.error("❌ Significant difference!")
-                            else:
-                                st.info(f"Multiple actual values: {list(set(actual_values))}")
-                        else:
-                            st.warning("⚠️ No exact matches found in training data")
-                            
-                            # Find closest matches
-                            st.subheader("🔍 Closest Matches")
-                            # Calculate similarity score for each row
-                            similarities = []
-                            for idx, row in training_data.iterrows():
-                                score = sum([
-                                    abs(row['Pizza Complexity'] - pizza_complexity),
-                                    abs(row['Order Hour'] - order_hour),
-                                    abs(row['Restaurant Avg Time'] - restaurant_avg_time),
-                                    abs(row['Distance (km)'] - distance),
-                                    abs(row['Topping Density'] - topping_density),
-                                    abs(row['Traffic Level'] - traffic_level),
-                                    abs(row['Is Peak Hour'] - is_peak_hour),
-                                    abs(row['Is Weekend'] - is_weekend)
-                                ])
-                                similarities.append((idx, score))
-                            
-                            # Sort by similarity (lowest score = most similar)
-                            similarities.sort(key=lambda x: x[1])
-                            
-                            # Show top 3 most similar
-                            st.write("**Top 3 most similar rows:**")
-                            for i, (idx, score) in enumerate(similarities[:3]):
-                                row = training_data.iloc[idx]
-                                st.write(f"{i+1}. Similarity score: {score:.1f}, Target: {row[target_col]:.1f}")
-                                st.write(f"   Features: {[row[f] for f in features]}")
+                    st.markdown(f"""
+                    <div class="feature-card">
+                        <h4>🚗 Delivery Details</h4>
+                        <p><strong>Order Time:</strong> {order_hour:02d}:00 - {get_time_category(order_hour)}</p>
+                        <p><strong>Distance:</strong> {distance} km</p>
+                        <p><strong>Traffic:</strong> {get_traffic_description(traffic_level)}</p>
+                        <p><strong>Peak Hour:</strong> {'Yes' if is_peak_hour else 'No'}</p>
+                        <p><strong>Weekend:</strong> {'Yes' if is_weekend else 'No'}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                # Test with some known values from training data
-                if training_data is not None:
-                    st.subheader("🧪 Test with Known Training Examples")
-                    test_examples = training_data.head(3)
-                    
-                    for i, (idx, row) in enumerate(test_examples.iterrows()):
-                        test_input = np.array([[row[f] for f in features]])
-                        test_prediction = model.predict(test_input)[0]
-                        actual_value = row[target_col]
-                        
-                        st.write(f"**Example {i+1}:**")
-                        st.write(f"  Input: {[row[f] for f in features]}")
-                        st.write(f"  Actual: {actual_value:.1f}, Predicted: {test_prediction:.1f}")
-                        st.write(f"  Difference: {abs(test_prediction - actual_value):.6f}")
-                        
-                        if abs(test_prediction - actual_value) < 0.001:
-                            st.success("  ✅ Perfect match!")
-                        else:
-                            st.error("  ❌ Mismatch detected!")
+                # Factors affecting delivery time
+                st.subheader("📊 Factors Affecting Delivery Time")
+                
+                factors = []
+                if is_peak_hour:
+                    factors.append("🔴 Peak hour increases delivery time")
+                if traffic_level >= 4:
+                    factors.append("🔴 Heavy traffic increases delivery time")
+                if distance >= 7:
+                    factors.append("🔴 Long distance increases delivery time")
+                if pizza_complexity >= 4:
+                    factors.append("🔴 Complex pizza increases preparation time")
+                if restaurant_avg_time >= 35:
+                    factors.append("🔴 Restaurant has longer preparation time")
+                
+                if not factors:
+                    factors.append("🟢 Optimal conditions for fast delivery")
+                
+                for factor in factors:
+                    st.markdown(f"• {factor}")
+                
+                # Quick tips
+                st.markdown("""
+                <div class="info-box">
+                    <h4>💡 Quick Tips for Faster Delivery:</h4>
+                    <ul>
+                        <li>Order during off-peak hours (avoid 11-14 and 17-20)</li>
+                        <li>Choose simpler pizzas for faster preparation</li>
+                        <li>Consider ordering from closer restaurants</li>
+                        <li>Check traffic conditions before ordering</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
                 
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-                import traceback
-                st.error(traceback.format_exc())
+                st.error(f"❌ Error making prediction: {str(e)}")
+                st.info("Please check your input values and try again.")
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; color: #666; padding: 2rem;">
+        <p>🍕 Pizza Delivery Time Predictor | Powered by Machine Learning</p>
+        <p><small>Predictions are estimates based on historical data and may vary with real-world conditions</small></p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
