@@ -76,7 +76,7 @@ def main():
     
     # Main content
     st.markdown("""
-    This app predicts pizza delivery time based on various factors like pizza complexity, 
+    This app predicts pizza delivery duration based on various factors like pizza complexity, 
     order time, distance, and traffic conditions.
     """)
     
@@ -141,7 +141,7 @@ def main():
             )
         
         # Submit button
-        submitted = st.form_submit_button("🚀 Predict Delivery Time", type="primary")
+        submitted = st.form_submit_button("🚀 Predict Delivery Duration", type="primary")
         
         if submitted:
             try:
@@ -160,14 +160,14 @@ def main():
                 st.markdown("---")
                 st.subheader("📋 Prediction Results")
                 
-                # Main result - keeping "Estimated Delivery Time" in display
-                st.success(f"**🕐 Estimated Delivery Time: {predicted_duration:.1f} minutes**")
+                # Main result - Now using correct terminology
+                st.success(f"**🕐 Predicted Delivery Duration: {predicted_duration:.1f} minutes**")
                 
                 # Time categorization
                 if predicted_duration <= 20:
-                    st.success("🟢 **Fast Delivery** - Excellent delivery time!")
+                    st.success("🟢 **Fast Delivery** - Excellent delivery duration!")
                 elif predicted_duration <= 30:
-                    st.warning("🟡 **Normal Delivery** - Standard delivery time")
+                    st.warning("🟡 **Normal Delivery** - Standard delivery duration")
                 else:
                     st.error("🔴 **Slow Delivery** - Longer than usual")
                 
@@ -176,9 +176,12 @@ def main():
                 minutes = int(predicted_duration % 60)
                 
                 if hours > 0:
-                    st.info(f"📅 **Total Time**: {hours} hour(s) {minutes} minute(s)")
+                    st.info(f"📅 **Total Duration**: {hours} hour(s) {minutes} minute(s)")
                 else:
-                    st.info(f"📅 **Total Time**: {minutes} minute(s)")
+                    st.info(f"📅 **Total Duration**: {minutes} minute(s)")
+                
+                # Additional explanation
+                st.info("💡 **Note**: This is the predicted duration from order placement to delivery completion.")
                 
                 # Show input summary
                 with st.expander("📝 Input Summary"):
@@ -211,6 +214,24 @@ def main():
     
     for feature, description in feature_info.items():
         st.write(f"**{feature}**: {description}")
+    
+    # Add clarification section
+    st.markdown("---")
+    st.subheader("🎯 Model Explanation")
+    st.markdown("""
+    **What does this model predict?**
+    
+    This model predicts the **Delivery Duration** - the total time from when an order is placed 
+    until the pizza is delivered to the customer. This includes:
+    
+    - 🍕 **Pizza preparation time** at the restaurant
+    - 🚗 **Travel time** from restaurant to customer
+    - 🚦 **Traffic delays** and other factors
+    - ⏰ **Peak hour impacts** on overall timing
+    
+    The prediction is based on the training data pattern where each combination of input factors 
+    corresponds to a specific delivery duration in minutes.
+    """)
 
 if __name__ == "__main__":
     main()
