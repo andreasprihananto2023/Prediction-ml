@@ -89,7 +89,7 @@ def main():
         
         if submitted:
             try:
-                # Prepare input data
+                # Prepare input data (EXACT same order as debug version)
                 input_values = [pizza_complexity, order_hour, restaurant_avg_time, 
                               distance, topping_density, traffic_level, 
                               is_peak_hour, is_weekend]
@@ -99,6 +99,12 @@ def main():
                 # Make prediction
                 model = model_data['model']
                 predicted_duration = model.predict(input_data)[0]
+                
+                # Debug info (temporary - remove after verification)
+                st.write(f"DEBUG - Input values: {input_values}")
+                st.write(f"DEBUG - Input shape: {input_data.shape}")
+                st.write(f"DEBUG - Features order: {model_data['features']}")
+                st.write(f"DEBUG - Raw prediction: {predicted_duration}")
                 
                 # Display result
                 st.markdown("---")
