@@ -6,8 +6,8 @@ import os
 
 # Configure page
 st.set_page_config(
-    page_title="Pizza Delivery Time Predictor - DEBUG",
-    page_icon="🔍",
+    page_title="Pizza Delivery Time Predictor",
+    page_icon="🍕",
     layout="wide"
 )
 
@@ -39,171 +39,219 @@ def load_model():
     except Exception as e:
         return None, f"Error loading model: {str(e)}"
 
-# Load model
+# Load the model
 model_data, error_message = load_model()
 
+# Main app
 def main():
-    st.title("🔍 Pizza Delivery Time Predictor - DEBUG MODE")
+    st.title("🍕 Pizza Delivery Time Predictor")
     st.markdown("---")
     
     if error_message:
         st.error(f"❌ {error_message}")
+        st.info("📝 **To fix this issue:**")
+        st.info("1. Make sure you have 'Train Data.xlsx' in the same directory")
+        st.info("2. Run the training script to generate the model file")
+        st.info("3. Then restart this Streamlit app")
         return
     
-    # Show model information
-    if model_data:
-        st.subheader("🔧 Model Information")
-        st.write(f"**Features expected by model:** {model_data['features']}")
-        st.write(f"**Number of features:** {model_data['n_features']}")
-        if model_data['performance']:
-            st.write(f"**Model performance:** {model_data['performance']}")
+    # Sidebar with model info
+    with st.sidebar:
+        st.header("📊 Model Information")
+        st.success("✅ Model loaded successfully!")
+        
+        perf = model_data['performance']
+        if perf:
+            st.metric("R² Score", f"{perf.get('test_r2', 0):.3f}")
+            st.metric("MAE (minutes)", f"{perf.get('test_mae', 0):.2f}")
+            st.metric("CV MAE", f"{perf.get('cv_mae', 0):.2f}")
+            
+            # Show prediction uncertainty
+            if 'prediction_std' in perf:
+                st.metric("Prediction Std", f"±{perf.get('prediction_std', 0):.1f} min")
+        
+        st.subheader("Features Used:")
+        for i, feature in enumerate(model_data['features'], 1):
+            st.write(f"{i}. {feature}")
     
-    st.markdown("---")
+    # Main content
+    st.markdown("""
+    This app predicts pizza delivery time based on various factors like pizza complexity, 
+    order time, distance, and traffic conditions.
+    """)
     
-    # Prediction form
+    # Input form
     with st.form("prediction_form"):
         st.subheader("🔧 Enter Order Details")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            pizza_complexity = st.slider("Pizza Complexity", min_value=1, max_value=5, value=3)
-            order_hour = st.slider("Order Hour", min_value=0, max_value=23, value=14)
-            restaurant_avg_time = st.slider("Restaurant Avg Time (minutes)", min_value=10, max_value=60, value=25)
-            distance = st.slider("Distance (km)", min_value=1, max_value=10, value=5)
+            pizza_complexity = st.slider(
+                "Pizza Complexity", 
+                min_value=1, max_value=5, value=3,
+                help="1 = Simple, 5 = Very Complex"
+            )
+            
+            order_hour = st.slider(
+                "Order Hour", 
+                min_value=0, max_value=23, value=14,
+                help="Hour of the day (0-23)"
+            )
+            
+            restaurant_avg_time = st.slider(
+                "Restaurant Avg Time (minutes)", 
+                min_value=10, max_value=60, value=25,
+                help="Average preparation time for this restaurant"
+            )
+            
+            distance = st.slider(
+                "Distance (km)", 
+                min_value=1, max_value=10, value=5,
+                help="Delivery distance in kilometers"
+            )
         
         with col2:
-            topping_density = st.slider("Topping Density", min_value=1, max_value=5, value=2)
-            traffic_level = st.slider("Traffic Level", min_value=1, max_value=5, value=3)
-            is_peak_hour = st.selectbox("Peak Hour?", options=[0, 1], index=1, format_func=lambda x: "Yes" if x == 1 else "No")
-            is_weekend = st.selectbox("Weekend?", options=[0, 1], index=0, format_func=lambda x: "Yes" if x == 1 else "No")
+            topping_density = st.slider(
+                "Topping Density", 
+                min_value=1, max_value=5, value=2,
+                help="1 = Light toppings, 5 = Heavy toppings"
+            )
+            
+            traffic_level = st.slider(
+                "Traffic Level", 
+                min_value=1, max_value=5, value=3,
+                help="1 = No traffic, 5 = Heavy traffic"
+            )
+            
+            # Remove manual input for peak hour and weekend
+            # These should be calculated automatically
+            
+        # Calculate engineered features automatically
+        is_peak_hour = 1 if ((order_hour >= 11 and order_hour <= 14) or 
+                           (order_hour >= 17 and order_hour <= 20)) else 0
         
-        submitted = st.form_submit_button("🔍 DEBUG PREDICTION", type="primary")
+        # For weekend, we need order month - let's add this input
+        order_month = st.slider(
+            "Order Month", 
+            min_value=1, max_value=12, value=6,
+            help="Month of the year (1-12)"
+        )
+        
+        is_weekend = 1 if order_month in [6, 7, 8, 9] else 0
+        
+        # Display calculated values
+        st.info(f"🕐 Peak Hour: {'Yes' if is_peak_hour else 'No'} (automatically calculated)")
+        st.info(f"📅 Weekend: {'Yes' if is_weekend else 'No'} (automatically calculated)")
+        
+        # Submit button
+        submitted = st.form_submit_button("🚀 Predict Delivery Time", type="primary")
         
         if submitted:
-            st.markdown("---")
-            st.subheader("🔍 COMPLETE DEBUG INFORMATION")
-            
-            # Original app logic (your current code)
-            st.write("### 📋 ORIGINAL APP LOGIC:")
-            input_values_original = [pizza_complexity, order_hour, restaurant_avg_time, 
-                                   distance, topping_density, traffic_level, 
-                                   is_peak_hour, is_weekend]
-            input_data_original = np.array([input_values_original])
-            
-            st.write(f"**Input values (original):** {input_values_original}")
-            st.write(f"**Input shape (original):** {input_data_original.shape}")
-            st.write(f"**Features order (original):** ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 'Distance (km)', 'Topping Density', 'Traffic Level', 'Is Peak Hour', 'Is Weekend']")
-            
-            # Model prediction
-            if model_data:
+            try:
+                # Ensure feature order matches training
+                # Based on diagnostic script, the order should be:
+                # ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
+                #  'Distance (km)', 'Topping Density', 'Traffic Level', 
+                #  'Is Peak Hour', 'Is Weekend']
+                
+                input_data = np.array([[
+                    pizza_complexity,      # Pizza Complexity
+                    order_hour,           # Order Hour
+                    restaurant_avg_time,  # Restaurant Avg Time
+                    distance,             # Distance (km)
+                    topping_density,      # Topping Density
+                    traffic_level,        # Traffic Level
+                    is_peak_hour,         # Is Peak Hour (calculated)
+                    is_weekend            # Is Weekend (calculated)
+                ]])
+                
+                # Verify input shape
+                expected_features = len(model_data['features'])
+                if input_data.shape[1] != expected_features:
+                    st.error(f"Feature mismatch: Expected {expected_features}, got {input_data.shape[1]}")
+                    return
+                
+                # Make prediction
                 model = model_data['model']
-                predicted_duration_original = model.predict(input_data_original)[0]
-                st.write(f"**Raw prediction (original):** {predicted_duration_original}")
-                st.success(f"**ORIGINAL RESULT: {predicted_duration_original:.1f} minutes**")
-            
-            st.markdown("---")
-            
-            # Diagnostic script logic
-            st.write("### 🔬 DIAGNOSTIC SCRIPT LOGIC:")
-            
-            # Calculate engineered features like diagnostic script
-            is_peak_hour_calc = 1 if ((order_hour >= 11 and order_hour <= 14) or 
-                                     (order_hour >= 17 and order_hour <= 20)) else 0
-            
-            # Default weekend calculation (since we don't have order_month)
-            is_weekend_calc = 0  # Default to weekday
-            
-            st.write(f"**Calculated Peak Hour:** {is_peak_hour_calc} (based on hour {order_hour})")
-            st.write(f"**Peak Hour Logic:** (11-14) OR (17-20) = {(order_hour >= 11 and order_hour <= 14) or (order_hour >= 17 and order_hour <= 20)}")
-            st.write(f"**Calculated Weekend:** {is_weekend_calc} (default to weekday)")
-            
-            # Using calculated features
-            input_values_calc = [pizza_complexity, order_hour, restaurant_avg_time, 
-                               distance, topping_density, traffic_level, 
-                               is_peak_hour_calc, is_weekend_calc]
-            input_data_calc = np.array([input_values_calc])
-            
-            st.write(f"**Input values (calculated):** {input_values_calc}")
-            st.write(f"**Input shape (calculated):** {input_data_calc.shape}")
-            
-            if model_data:
-                predicted_duration_calc = model.predict(input_data_calc)[0]
-                st.write(f"**Raw prediction (calculated):** {predicted_duration_calc}")
-                st.success(f"**CALCULATED RESULT: {predicted_duration_calc:.1f} minutes**")
-            
-            st.markdown("---")
-            
-            # Model feature order check
-            if model_data:
-                st.write("### 🎯 MODEL FEATURE ORDER CHECK:")
-                expected_features = model_data['features']
-                st.write(f"**Model expects:** {expected_features}")
+                predicted_duration = model.predict(input_data)[0]
                 
-                # Create input using model's expected order
-                feature_values = {
-                    'Pizza Complexity': pizza_complexity,
-                    'Order Hour': order_hour,
-                    'Restaurant Avg Time': restaurant_avg_time,
-                    'Distance (km)': distance,
-                    'Topping Density': topping_density,
-                    'Traffic Level': traffic_level,
-                    'Is Peak Hour': is_peak_hour,
-                    'Is Weekend': is_weekend
-                }
+                # Display results
+                st.markdown("---")
+                st.subheader("📋 Prediction Results")
                 
-                input_values_ordered = [feature_values[feature] for feature in expected_features]
-                input_data_ordered = np.array([input_values_ordered])
+                # Main result
+                st.success(f"**🕐 Estimated Delivery Time: {predicted_duration:.1f} minutes**")
                 
-                st.write(f"**Input values (model order):** {input_values_ordered}")
-                st.write(f"**Input shape (model order):** {input_data_ordered.shape}")
+                # Time categorization
+                if predicted_duration <= 20:
+                    st.success("🟢 **Fast Delivery** - Excellent delivery time!")
+                elif predicted_duration <= 30:
+                    st.warning("🟡 **Normal Delivery** - Standard delivery time")
+                else:
+                    st.error("🔴 **Slow Delivery** - Longer than usual")
                 
-                predicted_duration_ordered = model.predict(input_data_ordered)[0]
-                st.write(f"**Raw prediction (model order):** {predicted_duration_ordered}")
-                st.success(f"**MODEL ORDER RESULT: {predicted_duration_ordered:.1f} minutes**")
-            
-            st.markdown("---")
-            
-            # Comparison
-            st.write("### ⚖️ COMPARISON:")
-            st.write(f"**User Input Peak Hour:** {is_peak_hour}")
-            st.write(f"**Calculated Peak Hour:** {is_peak_hour_calc}")
-            st.write(f"**User Input Weekend:** {is_weekend}")
-            st.write(f"**Calculated Weekend:** {is_weekend_calc}")
-            
-            if is_peak_hour != is_peak_hour_calc:
-                st.warning("⚠️ Peak Hour values differ!")
-            if is_weekend != is_weekend_calc:
-                st.warning("⚠️ Weekend values differ!")
-            
-            # Show all predictions for comparison
-            st.write("### 📊 ALL PREDICTIONS:")
-            if model_data:
-                results_df = pd.DataFrame({
-                    'Method': ['Original App', 'Calculated Features', 'Model Order'],
-                    'Prediction': [f"{predicted_duration_original:.1f}", 
-                                 f"{predicted_duration_calc:.1f}", 
-                                 f"{predicted_duration_ordered:.1f}"],
-                    'Peak Hour': [is_peak_hour, is_peak_hour_calc, is_peak_hour],
-                    'Weekend': [is_weekend, is_weekend_calc, is_weekend]
-                })
-                st.dataframe(results_df, use_container_width=True)
-            
-            # Test with specific values from diagnostic
-            st.markdown("---")
-            st.write("### 🧪 TEST WITH SPECIFIC VALUES:")
-            
-            # Test case 1: Peak hour should be 1 for hour 14
-            test_hour = 14
-            test_peak = 1 if ((test_hour >= 11 and test_hour <= 14) or 
-                             (test_hour >= 17 and test_hour <= 20)) else 0
-            st.write(f"**Test:** Hour {test_hour} should give Peak Hour = {test_peak}")
-            
-            # Test case 2: Non-peak hour should be 0 for hour 10
-            test_hour2 = 10
-            test_peak2 = 1 if ((test_hour2 >= 11 and test_hour2 <= 14) or 
-                              (test_hour2 >= 17 and test_hour2 <= 20)) else 0
-            st.write(f"**Test:** Hour {test_hour2} should give Peak Hour = {test_peak2}")
+                # Convert to hours and minutes
+                hours = int(predicted_duration // 60)
+                minutes = int(predicted_duration % 60)
+                
+                if hours > 0:
+                    st.info(f"📅 **Total Time**: {hours} hour(s) {minutes} minute(s)")
+                else:
+                    st.info(f"📅 **Total Time**: {minutes} minute(s)")
+                
+                # Show input summary
+                with st.expander("📝 Input Summary"):
+                    input_df = pd.DataFrame({
+                        'Feature': model_data['features'],
+                        'Value': [pizza_complexity, order_hour, restaurant_avg_time, 
+                                distance, topping_density, traffic_level, 
+                                is_peak_hour, is_weekend]
+                    })
+                    st.dataframe(input_df, use_container_width=True)
+                
+                # Show calculated features
+                with st.expander("🔧 Calculated Features"):
+                    st.write(f"**Peak Hour Logic**: Order hour {order_hour} -> {'Peak' if is_peak_hour else 'Not Peak'}")
+                    st.write(f"**Weekend Logic**: Order month {order_month} -> {'Weekend' if is_weekend else 'Weekday'}")
+                    st.write("Peak hours: 11-14 and 17-20")
+                    st.write("Weekend months: 6, 7, 8, 9")
+                
+            except Exception as e:
+                st.error(f"❌ Prediction failed: {str(e)}")
+                st.error("Please check your input values and try again.")
+                
+                # Debug information
+                with st.expander("🔍 Debug Information"):
+                    st.write(f"Expected features: {model_data['features']}")
+                    st.write(f"Input shape: {input_data.shape if 'input_data' in locals() else 'Not created'}")
+                    st.write(f"Model type: {type(model_data['model'])}")
+    
+    # Information section
+    st.markdown("---")
+    st.subheader("ℹ️ Feature Information")
+    
+    feature_info = {
+        "Pizza Complexity": "Difficulty level of pizza preparation (1-5)",
+        "Order Hour": "Hour of the day when order is placed (0-23)",
+        "Restaurant Avg Time": "Average preparation time for the restaurant",
+        "Distance (km)": "Delivery distance in kilometers",
+        "Topping Density": "Amount of toppings on the pizza (1-5)",
+        "Traffic Level": "Current traffic conditions (1-5)",
+        "Is Peak Hour": "Automatically calculated: 11-14 and 17-20",
+        "Is Weekend": "Automatically calculated: months 6,7,8,9"
+    }
+    
+    for feature, description in feature_info.items():
+        st.write(f"**{feature}**: {description}")
+
+    # Additional debugging section
+    if st.checkbox("🔍 Show Debug Information"):
+        st.subheader("Debug Information")
+        st.write("**Model Features:**")
+        st.write(model_data['features'])
+        st.write("**Model Performance:**")
+        st.write(model_data['performance'])
 
 if __name__ == "__main__":
     main()
