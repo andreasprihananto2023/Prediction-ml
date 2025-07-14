@@ -23,6 +23,10 @@ def load_model():
             model_info = pickle.load(model_file)
         
         if isinstance(model_info, dict):
+            # Check model format
+            if 'model' not in model_info or 'features' not in model_info:
+                return None, "Invalid model format. Missing 'model' or 'features'."
+            
             model = model_info['model']
             features = model_info['features']
             performance = model_info.get('model_performance', {})
@@ -38,6 +42,7 @@ def load_model():
             
     except Exception as e:
         return None, f"Error loading model: {str(e)}"
+
 
 # Load the model
 model_data, error_message = load_model()
