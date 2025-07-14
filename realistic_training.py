@@ -168,73 +168,16 @@ for name, model in models.items():
         best_score = test_r2
         best_model = model
 
-print(f"\n🏆 BEST MODEL SELECTION")
-print("-" * 30)
-best_model_name = None
-for name, result in results.items():
-    if result['model'] == best_model:
-        best_model_name = name
-        best_result = result
-        break
-
-print(f"Best model: {best_model_name}")
-print(f"Cross-validation MAE: {best_result['cv_mae']:.2f} ± {best_result['cv_std']:.2f}")
-print(f"Test R²: {best_result['test_r2']:.3f}")
-print(f"Test MAE: {best_result['test_mae']:.2f} minutes")
-
-# Feature importance
-print(f"\n🎯 FEATURE IMPORTANCE")
-print("-" * 25)
-feature_importance = pd.DataFrame({
-    'feature': features,
-    'importance': best_model.feature_importances_
-}).sort_values('importance', ascending=False)
-
-for idx, row in feature_importance.iterrows():
-    print(f"{row['feature']}: {row['importance']:.3f}")
-
-# Realistic performance assessment
-print(f"\n📊 REALISTIC PERFORMANCE ASSESSMENT")
-print("-" * 40)
-
-# Calculate prediction intervals (rough estimation)
-residuals = y_test - best_model.predict(X_test)
-residual_std = residuals.std()
-
-print(f"Average prediction error: ±{best_result['test_mae']:.1f} minutes")
-print(f"Standard deviation of errors: ±{residual_std:.1f} minutes")
-print(f"95% prediction interval: approximately ±{2*residual_std:.1f} minutes")
-
-# Model insights
-if best_result['test_r2'] > 0.9:
-    print("\n⚠️  WARNING: Very high R² score might indicate:")
-    print("   - Data might be synthetic or artificially generated")
-    print("   - Possible data leakage")
-    print("   - Model might not generalize well to new data")
-elif best_result['test_r2'] > 0.7:
-    print("\n✅ Good model performance - reasonable for delivery time prediction")
-else:
-    print("\n📈 Model performance is moderate - consider feature engineering")
-
 # Save the best model
 model_info = {
     'model': best_model,
     'features': features,
-    'feature_names': features,
     'n_features': len(features),
-    'target_column': target,  # Store the actual target column name used
     'model_performance': {
-        'cv_mae': best_result['cv_mae'],
-        'cv_std': best_result['cv_std'],
-        'test_r2': best_result['test_r2'],
-        'test_mae': best_result['test_mae'],
-        'train_r2': best_result['train_r2'],
-        'train_mae': best_result['train_mae']
-    },
-    'feature_importance': feature_importance.to_dict(),
-    'model_type': best_model_name,
-    'noise_added': use_noise,
-    'prediction_std': residual_std
+        'cv_mae': results[best_model]['cv_mae'],
+        'test_r2': results[best_model]['test_r2'],
+        'test_mae': results[best_model]['test_mae']
+    }
 }
 
 # Save model
@@ -242,15 +185,3 @@ with open('realistic_rf_model.pkl', 'wb') as f:
     pickle.dump(model_info, f)
 
 print(f"\n💾 Model saved as 'realistic_rf_model.pkl'")
-print(f"📊 Target column used: '{target}'")
-
-# Test prediction
-print(f"\n🧪 TESTING PREDICTION")
-print("-" * 20)
-test_input = np.array([[3, 14, 25, 5, 2, 3, 1, 0]])
-test_prediction = best_model.predict(test_input)[0]
-print(f"Test prediction: {test_prediction:.1f} minutes")
-print(f"Expected range: {test_prediction-residual_std:.1f} - {test_prediction+residual_std:.1f} minutes")
-
-print(f"\n✅ Training complete!")
-print("🎯 Use 'realistic_rf_model.pkl' for more realistic predictions")
