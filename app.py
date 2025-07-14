@@ -23,7 +23,7 @@ def load_model():
             model_info = pickle.load(model_file)
         
         if isinstance(model_info, dict):
-            # Check model format
+            # Validate model format
             if 'model' not in model_info or 'features' not in model_info:
                 return None, "Invalid model format. Missing 'model' or 'features'."
             
@@ -42,7 +42,6 @@ def load_model():
             
     except Exception as e:
         return None, f"Error loading model: {str(e)}"
-
 
 # Load the model
 model_data, error_message = load_model()
@@ -80,10 +79,8 @@ def main():
             st.write(f"{i}. {feature}")
     
     # Main content
-    st.markdown("""
-    This app predicts pizza delivery time based on various factors like pizza complexity, 
-    order time, distance, and traffic conditions.
-    """)
+    st.markdown("""This app predicts pizza delivery time based on various factors like pizza complexity, 
+    order time, distance, and traffic conditions.""")
     
     # Input form
     with st.form("prediction_form"):
@@ -151,11 +148,9 @@ def main():
         if submitted:
             try:
                 # Prepare input data
-                input_data = np.array([[
-                    pizza_complexity, order_hour, restaurant_avg_time, 
-                    distance, topping_density, traffic_level, 
-                    is_peak_hour, is_weekend
-                ]])
+                input_data = np.array([[pizza_complexity, order_hour, restaurant_avg_time, 
+                                        distance, topping_density, traffic_level, 
+                                        is_peak_hour, is_weekend]])
                 
                 # Make prediction
                 model = model_data['model']
@@ -190,8 +185,8 @@ def main():
                     input_df = pd.DataFrame({
                         'Feature': model_data['features'],
                         'Value': [pizza_complexity, order_hour, restaurant_avg_time, 
-                                distance, topping_density, traffic_level, 
-                                is_peak_hour, is_weekend]
+                                  distance, topping_density, traffic_level, 
+                                  is_peak_hour, is_weekend]
                     })
                     st.dataframe(input_df, use_container_width=True)
                 
